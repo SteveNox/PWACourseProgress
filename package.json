@@ -1,0 +1,23 @@
+{
+  "name": "pwacourseprogress",
+  "version": "1.0.0",
+  "description": "Running course project for WIFI PWA\r Hallo, das ist ein Test für den ersten Commit!",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "http-server -c-1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/SteveNox/PWACourseProgress.git"
+  },
+  "author": "pwa kurs",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/SteveNox/PWACourseProgress/issues"
+  },
+  "homepage": "https://github.com/SteveNox/PWACourseProgress#readme",
+  "dependencies": {
+    "http-server": "^14.1.0"
+  }
+}
