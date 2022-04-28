@@ -1,7 +1,10 @@
 # PWACourseProgress
 Running course project for WIFI PWA
 # Current Features
-Aktueller Projektstand nach dem ersten Kursabend
-- Manifest vorhanden
-- Servicer worker mit Lifecycle Events und Fetch
-- App.js mit Service Worker Registrierung
+Aktueller Projektstand nach dem zweiten Kursabend
+
+# ToDos für Abend 3
+Google Firebase einbauen
+Formular implementieren mit damagelog.js
+
+Offline fallback
