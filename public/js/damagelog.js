@@ -39,33 +39,29 @@ var loglist = {
           networkDataReceived = true;
           loglist.items = [];
           for (var key in data) {
-            loglist.items.push({key: key, description: data[key].description, reportedAt: data[key].reportedAt, picture: data[key].picture, licensePlate: data[key].licensePlate}); 
+            loglist.items.push({key: key, id: data[key].id, description: data[key].description, reportedAt: data[key].reportedAt, picture: data[key].picture, licensePlate: data[key].licensePlate}); 
           }
           console.log("from web", loglist.items);
           loglist.draw();
-      });    
+      })
+      .catch(function(err) {
+        //prevent red line in console
+      }); 
 
     //network cache racing
-    if ('caches' in window) {
-      caches.match(dbUrl + ".json")
-        .then(function(response) {
-          if (response) {
-            return response.json();
-          }
-        })
+    if('indexedDB' in window) {
+      readAllData('damages')
         .then(function(data) {
           if(!networkDataReceived) {
             loglist.items = [];
             for (var key in data) {
-            loglist.items.push({key: key, description: data[key].description, reportedAt: data[key].reportedAt, picture: data[key].picture, licensePlate: data[key].licensePlate}); 
+              loglist.items.push({key: key, id: data[key].id, description: data[key].description, reportedAt: data[key].reportedAt, picture: data[key].picture, licensePlate: data[key].licensePlate}); 
+             }
+            console.log("from indexedDB", loglist.items);
+            loglist.draw();
           }
-          console.log("from cache", loglist.items);
-          loglist.draw();
-        }
-        });
+        })
     }
-
-
   },
 
   add : (evt) => {
@@ -75,18 +71,43 @@ var loglist = {
       reportedAt: loglist.reportedAt.value,
       licensePlate: loglist.licensePlate.value,
       description: loglist.description.value,
-      picture: loglist.picture.value
+      picture: loglist.picture.value,
+      id: new Date().toISOString(),
     }
 
-    fetch(dbUrl + ".json", {
-      method: "POST", 
-      body: JSON.stringify(newItem), 
-      headers: {"Content-type": "application/json; charset=UTF-8"}
-    })
-    .then(function() {
-        loglist.items.push(newItem);
-        loglist.draw();
-    });
+    if ('serviceWorker' in navigator && 'SyncManager' in window) {
+      navigator.serviceWorker.ready
+        .then(function(sw) {
+            writeData('sync-damages', newItem)
+            .then(function() {
+              sw.sync.register('sync-new-damagelog');
+            })
+            .then(function() {
+              //show toast or so on
+              writeData('damages', newItem);
+              loglist.items.push(newItem);
+              loglist.draw();
+            })
+            .catch(function(err) {
+              // console.log(err);
+            })
+        });
+    } else {
+      fetch(dbUrl + ".json", {
+        method: "POST", 
+        body: JSON.stringify(newItem), 
+        headers: {"Content-type": "application/json; charset=UTF-8", 'Accept': 'application/json'}
+      })
+      .then(function() {
+          loglist.items.push(newItem);
+          loglist.draw();
+      })
+      .catch(function(err) {
+        //prevent red line in console
+      });
+    }
+
+
   },
 
   delete : (id) => { if (confirm("Remove this item?")) {
@@ -95,8 +116,10 @@ var loglist = {
     fetch(dbUrl + "/" + item.key + ".json", {
       method: "DELETE"
     });
-    
+
+    var idToDelete = loglist.items.find(i=>i.key==id);
     loglist.items.splice(loglist.items.findIndex(i=>i.key==id), 1);
+    deleteItemFromData(idToDelete.id, 'damages');
     loglist.draw();
   }},
 
