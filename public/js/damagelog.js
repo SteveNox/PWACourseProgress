@@ -18,6 +18,12 @@ var loglist = {
   licensePlate: null, 
   description: null, 
   picture: null,
+  videoPlayer: null,
+  canvasElement: null,
+  captureButton: null,
+  imagePicker: null,
+  imagePickerArea: null,
+  picture: null,
 
   init : () => {
     loglist.inputForm = document.getElementById('damageForm');
@@ -30,6 +36,52 @@ var loglist = {
     loglist.inputForm.onsubmit = loglist.add;
     loglist.addButton.disabled = false;
 
+    loglist.videoPlayer = document.querySelector('#player');
+    loglist.canvasElement = document.querySelector('#canvas');
+    loglist.captureButton = document.querySelector('#capture-button');
+    loglist.imagePicker = document.querySelector('#image-picker');
+    loglist.imagePickerArea = document.querySelector('#pick-image');
+
+    loglist.captureButton.addEventListener('click', loglist.capture);
+
+    loglist.videoPlayer.style.display = 'none';
+    loglist.imagePickerArea.style.display = 'none';
+
+    //initialize media
+    if (!('mediaDevices' in navigator)) {
+        navigator.mediaDevices = {};
+    }
+
+    if (!('getUserMedia' in navigator.mediaDevices)) {
+      //take advantage of older methods for special browsers
+      navigator.mediaDevices.getUserMedia = function(constraints) {
+        var getUserMedia = navigator.webkitGetUserMedia() || navigator.mozGetUserMedia;
+        if (!getUserMedia) {
+          return Promise.reject(new Error('getUserMedia is not implemented!'));
+        }
+
+        return new Promise(function(resolve, reject) {
+          getUserMedia.call(navigator, constraints, resolve, reject);
+        });
+      } 
+    }
+
+    //will automatically ask for permissions
+    navigator.mediaDevices.getUserMedia({video: true})
+      .then(function(stream) {
+        loglist.videoPlayer.srcObject = stream;
+        loglist.videoPlayer.style.display = 'block';
+      })
+      .catch(function(err) {
+        //show image picker?!
+        loglist.imagePickerArea.style.display = 'block';
+      });
+
+
+    //initialize location
+    if (!('geolocation' in navigator)) {
+      //hide button
+    }
 
     var networkDataReceived = false;
 
@@ -63,7 +115,23 @@ var loglist = {
         })
     }
   },
-
+  capture: () => {
+    var context = loglist.canvasElement.getContext('2d');
+    loglist.canvasElement.style.display = 'block';
+    loglist.videoPlayer.style.display = 'none';
+    context.drawImage(loglist.videoPlayer, 0, 0, canvas.width, loglist.videoPlayer.videoHeight / (loglist.videoPlayer.videoWidth / canvas.width));
+    loglist.videoPlayer.srcObject.getVideoTracks().forEach(function(track) {
+      track.stop();
+    });
+    loglist.picture = dataURItoBlob(loglist.canvasElement.toDataURL());
+  },
+  locate: () => {
+    navigator.geolocation.getCurrentPosition(function(position) {
+      //var location = position.coords.latitude;
+    }, function(err) {
+      console.log(err);
+    }, {timeout: 7000});
+  },
   add : (evt) => {
     evt.preventDefault();
     
@@ -113,14 +181,36 @@ var loglist = {
   delete : (id) => { if (confirm("Remove this item?")) {
     var item = loglist.items.find(i=>i.key==id);
     
-    fetch(dbUrl + "/" + item.key + ".json", {
-      method: "DELETE"
-    });
-
-    var idToDelete = loglist.items.find(i=>i.key==id);
-    loglist.items.splice(loglist.items.findIndex(i=>i.key==id), 1);
-    deleteItemFromData(idToDelete.id, 'damages');
-    loglist.draw();
+    if ('serviceWorker' in navigator && 'SyncManager' in window) {
+      navigator.serviceWorker.ready
+        .then(function(sw) {
+            writeData('sync-damages-delete', item)
+            .then(function() {
+              sw.sync.register('sync-new-damagelog-delete');
+            })
+            .then(function() {
+              //show toast or so on
+              deleteItemFromData('damages', id);
+              loglist.items.splice(loglist.items.findIndex(i=>i.key==id), 1);
+              loglist.draw();
+            })
+            .catch(function(err) {
+              // console.log(err);
+            })
+        });
+    } else {
+      fetch(dbUrl + "/" + item.key + ".json", {
+        method: "DELETE"
+      })
+      .then(function() {
+          deleteItemFromData('damages', id);
+          loglist.items.splice(loglist.items.findIndex(i=>i.key==id), 1);
+          loglist.draw();          
+      })
+      .catch(function(err) {
+        //prevent red line in console
+      });
+    }
   }},
 
   draw : () => {

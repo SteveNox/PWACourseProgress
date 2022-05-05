@@ -5,6 +5,9 @@ var dbPromise = idb.open('damageStore', 1, function(db) {
     if (!db.objectStoreNames.contains('sync-damages')) {
         db.createObjectStore('sync-damages', {keyPath: 'id'});
     }   
+    if (!db.objectStoreNames.contains('sync-damages-delete')) {
+        db.createObjectStore('sync-damages-delete', {keyPath: 'id'});
+    }   
 });
 
 function writeData(st, data) {
@@ -48,4 +51,16 @@ function deleteItemFromData(st, id) {
         .then(function() {
             console.log('item deleted from indexeddb');
         });
+}
+
+function dataURItoBlob(dataURI) {
+    var byteString = atob(dataURI.split(',')[1]);
+    var mimeString = dataURI.split(',')[0].split(':')[1].split(';')[0]
+    var ab = new ArrayBuffer(byteString.length);
+    var ia = new Uint8Array(ab);
+    for (var i = 0; i < byteString.length; i++) {
+      ia[i] = byteString.charCodeAt(i);
+    }
+    var blob = new Blob([ab], {type: mimeString});
+    return blob;
 }

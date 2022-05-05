@@ -7,8 +7,8 @@ const dbUrl = "https://pwademo-66c7b-default-rtdb.europe-west1.firebasedatabase.
 
 
 //whenever content is changed, change the cache name variables below
-var CACHE_STATIC_NAME = 'static-v32'
-var CACHE_DYNAMIC_NAME = 'dynamic-v32'
+var CACHE_STATIC_NAME = 'static-v33'
+var CACHE_DYNAMIC_NAME = 'dynamic-v33'
 
 self.addEventListener('install', function(event) {
     // console.log('[SW]: Service worker installing...', event);
@@ -245,4 +245,31 @@ self.addEventListener('sync', function(event) {
                 })
         );
     }
+    if (event.tag == 'sync-new-damagelog-delete') {
+        event.waitUntil
+        (
+            readAllData('sync-damages-delete')
+                .then(function(data) 
+                {
+                    for (var dt of data) {
+                        var itemToDelete = {
+                            reportedAt: dt.reportedAt,
+                            licensePlate: dt.licensePlate,
+                            description: dt.description,
+                            picture: dt.picture,
+                            id: dt.id,
+                        }
+                        fetch(dbUrl + "/" + itemToDelete.key + ".json", {
+                            method: "DELETE"
+                          })
+                        .then(function(res) {
+                                //console.log('SENT DATA:', res);
+                                if(res.ok) {
+                                  deleteItemFromData('sync-damages-delete', dt.id);
+                                }
+                            });
+                    }
+                })
+        );
+    }    
 });
